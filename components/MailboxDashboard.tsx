@@ -1,0 +1,19 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useMailbox } from "./MailboxProvider";
+import LetterCard from "./LetterCard";
+import LetterComposer from "./LetterComposer";
+import type { Letter } from "@/types/mailbox";
+
+export default function MailboxDashboard(){
+  const {mailbox,member,members,letters,unreadCount,error,onlineUserIds,typingUserIds,markRead,signOut}=useMailbox();
+  const [composerOpen,setComposerOpen]=useState(false);const [replyTo,setReplyTo]=useState<Letter|null>(null);const [filter,setFilter]=useState<"all"|"pending"|"mine">("all");
+  useEffect(()=>{if(unreadCount>0)void markRead();},[markRead,unreadCount]);
+  const roots=useMemo(()=>letters.filter((item)=>!item.parent_id&&(filter==="all"||(filter==="pending"&&item.status==="pending")||(filter==="mine"&&item.author_id===member?.user_id))),[filter,letters,member?.user_id]);
+  const replies=useMemo(()=>{const map=new Map<string,Letter[]>();for(const letter of letters){if(letter.parent_id){const list=map.get(letter.parent_id)??[];list.push(letter);map.set(letter.parent_id,list);}}return map;},[letters]);
+  const other=members.find((item)=>item.user_id!==member?.user_id);
+  const days=mailbox?Math.max(1,Math.floor((Date.now()-new Date(mailbox.created_at).getTime())/86400000)+1):0;
+  const otherStatus=other&&onlineUserIds.includes(other.user_id)?"● 正在邮局中":other?.last_seen_at?`最后到访 ${new Date(other.last_seen_at).toLocaleString("zh-CN")}`:"尚未抵达";
+  return <div className="owl-post-page"><section className="owl-post-hero"><p className="page-eyebrow">THE OWL POST BETWEEN TWO SOULS</p><h1>双 人 魔 法 邮 局</h1><p>有些话不必进入档案，只需托付给夜色与猫头鹰。</p><div className="two-souls"><article><span style={{"--avatar-color":member?.avatar_color} as React.CSSProperties}>{member?.avatar_symbol}</span><strong>{member?.display_name}</strong><small>{member?.role==="owner"?"馆主":"收信人"} · 当前在邮局</small></article><i>✦</i><article><span style={{"--avatar-color":other?.avatar_color} as React.CSSProperties}>{other?.avatar_symbol??"?"}</span><strong>{other?.display_name??"等待第二位收信人"}</strong><small>{otherStatus}</small></article></div>{other&&typingUserIds.includes(other.user_id)?<p className="typing-rune">🪶 {other.display_name} 正在写信……</p>:null}<div className="mailbox-stats"><div><strong>{roots.length}</strong><span>封来信</span></div><div><strong>{unreadCount}</strong><span>封未读</span></div><div><strong>{days}</strong><span>天同行</span></div></div><div className="owl-post-actions"><button className="owl-primary" type="button" onClick={()=>{setReplyTo(null);setComposerOpen(true);}}>写一封信</button><button type="button" onClick={()=>signOut()}>离开邮局</button></div></section><section className="post-office-counter"><header><div><small>LETTERS IN THE LAMPLIGHT</small><h2>{mailbox?.name}</h2></div><div className="letter-filters"><button className={filter==="all"?"is-active":""} type="button" onClick={()=>setFilter("all")}>全部</button><button className={filter==="mine"?"is-active":""} type="button" onClick={()=>setFilter("mine")}>我的信</button>{member?.role==="owner"?<button className={filter==="pending"?"is-active":""} type="button" onClick={()=>setFilter("pending")}>待审核</button>:null}</div></header>{error?<p className="owl-error" role="alert">{error}</p>:null}<div className="owl-letter-list">{roots.length?roots.map((letter)=><LetterCard key={letter.id} letter={letter} replies={replies.get(letter.id)??[]} onReply={(target)=>{setReplyTo(target);setComposerOpen(true);}}/>):<div className="empty-owl-post"><span>🦉</span><h3>邮袋还是空的</h3><p>写下第一封信，让猫头鹰记住往返的路。</p><button type="button" onClick={()=>setComposerOpen(true)}>写下第一封信</button></div>}</div></section>{composerOpen?<LetterComposer replyTo={replyTo} onCancel={()=>setComposerOpen(false)} onSent={()=>{setComposerOpen(false);setReplyTo(null);}}/>:null}</div>;
+}

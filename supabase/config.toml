@@ -1,0 +1,17 @@
+project_id = "replace-with-your-supabase-project-ref"
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/owl-post"]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+[functions.mailbox-admin]
+verify_jwt = true
+
+[functions.redeem-mailbox-invite]
+verify_jwt = true
