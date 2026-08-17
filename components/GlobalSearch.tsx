@@ -8,6 +8,13 @@ import { SEARCH_HISTORY_KEY } from "@/utils/constants";
 interface Result { id: string; kind: "book" | "film" | "cp" | "note"; title: string; subtitle: string; href: string }
 const labels = { book: "书录", film: "影像", cp: "羁绊", note: "笔记" };
 
+function highlight(value: string, query: string) {
+  const needle = query.trim();
+  const index = value.toLocaleLowerCase("zh-CN").indexOf(needle.toLocaleLowerCase("zh-CN"));
+  if (!needle || index < 0) return value;
+  return <>{value.slice(0, index)}<mark>{value.slice(index, index + needle.length)}</mark>{value.slice(index + needle.length)}</>;
+}
+
 export default function GlobalSearch() {
   const { books, films, cps } = useArchiveData();
   const [open, setOpen] = useState(false);
@@ -47,5 +54,5 @@ export default function GlobalSearch() {
     setHistory(next); window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
   }
   if (!open) return null;
-  return <div className="search-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}><section className="search-scroll" role="dialog" aria-modal="true" aria-label="全局魔法搜索"><button className="search-close" type="button" onClick={() => setOpen(false)} aria-label="关闭搜索">×</button><header><small>OMNIA REVELIO · CTRL K</small><h2>全局魔法搜索</h2></header><div className="search-input-wrap"><span>⌕</span><input ref={inputRef} className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" && remember()} placeholder="搜索标题、作者、标签、笔记或短评……" /></div>{!query && history.length ? <div className="search-history"><span>最近咒语</span>{history.map((item) => <button key={item} type="button" onClick={() => setQuery(item)}>{item}</button>)}<button type="button" onClick={() => { setHistory([]); localStorage.removeItem(SEARCH_HISTORY_KEY); }}>清除</button></div> : null}<div className="search-results">{query && !results.length ? <p>没有显影的档案，试试其他词语。</p> : results.map((item) => <Link href={item.href} key={`${item.kind}-${item.id}`} onClick={() => { remember(); setOpen(false); }}><span className={`search-kind search-kind--${item.kind}`}>{labels[item.kind]}</span><div><strong>{item.title}</strong><small>{item.subtitle}</small></div><i>→</i></Link>)}</div></section></div>;
+  return <div className="search-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}><section className="search-scroll" role="dialog" aria-modal="true" aria-label="全局魔法搜索"><button className="search-close" type="button" onClick={() => setOpen(false)} aria-label="关闭搜索">×</button><header><small>OMNIA REVELIO · CTRL K</small><h2>全局魔法搜索</h2></header><div className="search-input-wrap"><span>⌕</span><input ref={inputRef} className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" && remember()} placeholder="搜索标题、作者、标签、笔记或短评……" /></div>{!query && history.length ? <div className="search-history"><span>最近咒语</span>{history.map((item) => <button key={item} type="button" onClick={() => setQuery(item)}>{item}</button>)}<button type="button" onClick={() => { setHistory([]); localStorage.removeItem(SEARCH_HISTORY_KEY); }}>清除</button></div> : null}<div className="search-results">{query && !results.length ? <p>没有显影的档案，试试其他词语。</p> : results.map((item) => <Link href={item.href} key={`${item.kind}-${item.id}`} onClick={() => { remember(); setOpen(false); }}><span className={`search-kind search-kind--${item.kind}`}>{labels[item.kind]}</span><div><strong>{highlight(item.title, query)}</strong><small>{highlight(item.subtitle, query)}</small></div><i>→</i></Link>)}</div></section></div>;
 }

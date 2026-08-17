@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import { useArchiveData } from "./ArchiveDataProvider";
 import { useTheme, type ThemeMode } from "./ThemeProvider";
 import { parseArchiveBackup } from "@/utils/storage";
@@ -36,12 +36,31 @@ export default function AdminPanel({ open, onClose }: { open: boolean; onClose: 
   const [resetPhrase, setResetPhrase] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const requestClose = useCallback(() => {
+    const hasUnfinishedInput = Boolean(current || next || confirm || pendingImport || resetPhrase);
+    if (hasUnfinishedInput && !window.confirm("站长工具中还有未完成的输入，仍要关闭吗？")) return;
+    onClose();
+  }, [confirm, current, next, onClose, pendingImport, resetPhrase]);
+
   useEffect(() => {
     if (!open) return;
-    const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarGap = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbarGap > 0) document.body.style.paddingRight = `${scrollbarGap}px`;
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent) => event.key === "Escape" && requestClose();
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
-  }, [onClose, open]);
+  }, [open, requestClose]);
 
   if (!open) return null;
 
@@ -90,9 +109,9 @@ export default function AdminPanel({ open, onClose }: { open: boolean; onClose: 
     resetAll(); window.location.reload();
   }
 
-  return <div className="admin-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <section className="admin-panel" role="dialog" aria-modal="true" aria-label="站长工具面板">
-      <header><div><small>KEEPER&apos;S ARCANE CONSOLE</small><h2>站长工具</h2></div><button type="button" onClick={onClose} aria-label="关闭站长工具">×</button></header>
+  return <div className="admin-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && requestClose()}>
+    <section className="admin-panel" role="dialog" aria-modal="true" aria-labelledby="admin-panel-title">
+      <header><div><small>KEEPER&apos;S ARCANE CONSOLE</small><h2 id="admin-panel-title">站长工具</h2></div><button type="button" onClick={requestClose} aria-label="关闭站长工具">×</button></header>
       <div className="admin-layout">
         <nav aria-label="站长工具分类">{tabs.map((item) => <button key={item.id} type="button" className={tab === item.id ? "is-active" : ""} onClick={() => setTab(item.id)}>{item.label}</button>)}</nav>
         <div className="admin-content">

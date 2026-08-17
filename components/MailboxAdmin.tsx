@@ -10,6 +10,7 @@ export default function MailboxAdmin() {
   const [name, setName] = useState("");
   const [profile, setProfile] = useState({ display_name: "", avatar_symbol: "🪶", avatar_color: "#7d383d" });
   const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
   const [resetPhrase, setResetPhrase] = useState("");
   const owner = member?.role === "owner";
 
@@ -21,9 +22,15 @@ export default function MailboxAdmin() {
   if (loading || !mailbox || !member) return <section className="mailbox-admin"><h3>夜枭云端邮局</h3><p className="admin-lead">正在从 Supabase 读取邮局设置……</p></section>;
 
   async function save() {
-    const profileSaved = await updateProfile(member!.user_id, profile);
-    const mailboxSaved = owner ? await updateMailbox({ name, reactions_enabled: mailbox?.reactions_enabled ?? true }) : true;
-    setNotice(profileSaved && mailboxSaved ? "云端邮局设置已保存" : "保存失败，请检查输入或云端连接");
+    setSaving(true);
+    setNotice("正在将设置封入云端……");
+    try {
+      const profileSaved = await updateProfile(member!.user_id, profile);
+      const mailboxSaved = owner ? await updateMailbox({ name, reactions_enabled: mailbox?.reactions_enabled ?? true }) : true;
+      setNotice(profileSaved && mailboxSaved ? "云端邮局设置已保存" : "保存失败，请检查输入或云端连接");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return <section className="mailbox-admin">
@@ -45,8 +52,8 @@ export default function MailboxAdmin() {
       </article>
     </div>
     {owner ? <label className="mailbox-setting-toggle"><input type="checkbox" checked={mailbox.reactions_enabled} onChange={(event) => void updateMailbox({ reactions_enabled: event.target.checked })} />允许心情反应</label> : null}
-    <button className="wax-button local-mailbox-save" type="button" onClick={() => void save()}>保存到 Supabase</button>
-    {notice ? <p className="notes-message" role="status">{notice}</p> : null}
+    <button className="wax-button local-mailbox-save" type="button" disabled={saving || !profile.display_name.trim()} onClick={() => void save()}>{saving ? "正在保存……" : "保存到 Supabase"}</button>
+    {notice ? <p className="notes-message" role="status" aria-live="polite">{notice}</p> : null}
     {owner ? <div className="danger-zone local-mailbox-danger"><h4>封存全部云端来信</h4><p>信件会软删除并从邮局隐藏，不影响书籍、影视或 CP 档案。</p><input value={resetPhrase} onChange={(event) => setResetPhrase(event.target.value)} placeholder="输入“确认清空”" /><button type="button" disabled={resetPhrase !== "确认清空"} onClick={() => { resetMailbox(); setResetPhrase(""); setNotice("云端来信已全部封存"); }}>确认封存</button></div> : null}
     {error ? <p className="owl-error" role="alert">{error}</p> : null}
   </section>;
